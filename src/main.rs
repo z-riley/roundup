@@ -1,6 +1,5 @@
 use clap::{command, Parser};
-use std::fs::File;
-use std::io::Read;
+use walkdir::{Error, WalkDir};
 
 #[derive(Parser, Debug)]
 #[command(name = "roundup")]
@@ -18,20 +17,34 @@ CLI-based lines-of-code analyser. E.g.,
 fn main() {
     let args = Args::parse();
 
+    let filetype = args.filetype.unwrap_or("all".to_string());
+
     println!(
         "Running on directory: {}. Filetype: {}",
-        args.dir,
-        args.filetype.unwrap_or("all".to_string()),
+        args.dir, &filetype
     );
 
-    let data_result = File::open("test.py");
+    match walkdir(&args.dir, &filetype) {
+        Ok(()) => println!("Directory walk succeeded"),
+        Err(e) => println!("Directory walk failed with error: {}", e),
+    }
+}
 
-    // Reading a file returns a Result enum
-    // Result can be a file or an error
-    let mut file = match data_result {
-        Ok(file) => file,
-        Err(error) => panic!("Problem opening the data file: {:?}", error),
-    };
+fn walkdir(path: &str, file_type: &str) -> Result<(), Error> {
+    let extension = String::from(".") + file_type;
 
-    // Look at walkdir crate for file handling https://docs.rs/walkdir/latest/walkdir/
+    for entry in WalkDir::new(path) {
+        let entry = entry?;
+
+        let is_file_type = entry
+            .file_name()
+            .to_str()
+            .map(|s| s.ends_with(&extension))
+            .unwrap_or(false);
+
+        if is_file_type {
+            println!("{}", entry.path().display());
+        }
+    }
+    Ok(())
 }

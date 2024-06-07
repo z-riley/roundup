@@ -27,14 +27,15 @@ fn main() {
     );
 
     match walkdir(&args.dir, &filetype) {
-        Ok(()) => println!("Directory walk succeeded"),
+        Ok(lines) => println!("Total lines: {}", lines),
         Err(e) => println!("Directory walk failed with error: {}", e),
     }
 }
 
-fn walkdir(path: &str, file_type: &str) -> Result<(), walkdir::Error> {
+fn walkdir(path: &str, file_type: &str) -> Result<u64, walkdir::Error> {
     let extension = String::from(".") + file_type;
 
+    let mut total_line_count: u64 = 0;
     for entry in WalkDir::new(path) {
         let entry = entry?;
 
@@ -45,18 +46,17 @@ fn walkdir(path: &str, file_type: &str) -> Result<(), walkdir::Error> {
             .unwrap_or(false);
 
         if is_file_type {
-            println!("{}", entry.path().display());
-            match count_lines(&entry.path().display().to_string()) {
-                Ok(line_count) => println!("Lines: {}", line_count),
+            let a = match count_lines(&entry.path().display().to_string()) {
+                Ok(line_count) => line_count,
                 Err(e) => panic!("Failed to count lines: {}", e),
-            }
+            };
+            total_line_count += a as u64;
         }
     }
-    Ok(())
+    Ok(total_line_count)
 }
 
 fn count_lines(path: &str) -> Result<usize, std::io::Error> {
     let reader = BufReader::new(File::open(path)?);
-    // Add 1 because last line not counted due to no termination
-    Ok(reader.lines().count() + 1)
+    Ok(reader.lines().count() + 0)
 }

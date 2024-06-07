@@ -1,5 +1,7 @@
 use clap::{command, Parser};
-use walkdir::{Error, WalkDir};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use walkdir::WalkDir;
 
 #[derive(Parser, Debug)]
 #[command(name = "roundup")]
@@ -30,7 +32,7 @@ fn main() {
     }
 }
 
-fn walkdir(path: &str, file_type: &str) -> Result<(), Error> {
+fn walkdir(path: &str, file_type: &str) -> Result<(), walkdir::Error> {
     let extension = String::from(".") + file_type;
 
     for entry in WalkDir::new(path) {
@@ -44,7 +46,17 @@ fn walkdir(path: &str, file_type: &str) -> Result<(), Error> {
 
         if is_file_type {
             println!("{}", entry.path().display());
+            match count_lines(&entry.path().display().to_string()) {
+                Ok(line_count) => println!("Lines: {}", line_count),
+                Err(e) => panic!("Failed to count lines: {}", e),
+            }
         }
     }
     Ok(())
+}
+
+fn count_lines(path: &str) -> Result<usize, std::io::Error> {
+    let reader = BufReader::new(File::open(path)?);
+    // Add 1 because last line not counted due to no termination
+    Ok(reader.lines().count() + 1)
 }

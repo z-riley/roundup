@@ -11,6 +11,11 @@ struct Args {
     filetype: Option<String>,
 }
 
+struct RoundupOutput {
+    lines: u64,
+    files: u32,
+}
+
 /*
 CLI-based lines-of-code analyser. E.g.,
     `roundup` for every type of file
@@ -18,24 +23,21 @@ CLI-based lines-of-code analyser. E.g.,
 */
 fn main() {
     let args = Args::parse();
-
     let filetype = args.filetype.unwrap_or("all".to_string());
 
-    println!(
-        "Running on directory: {}. Filetype: {}",
-        args.dir, &filetype
-    );
+    println!("Searching {} for .{} files", args.dir, &filetype);
 
     match walkdir(&args.dir, &filetype) {
-        Ok(lines) => println!("Total lines: {}", lines),
-        Err(e) => println!("Directory walk failed with error: {}", e),
+        Ok(output) => println!("{} lines in {} files", output.lines, output.files),
+        Err(e) => println!("Directory walk failed: {}", e),
     }
 }
 
-fn walkdir(path: &str, file_type: &str) -> Result<u64, walkdir::Error> {
+fn walkdir(path: &str, file_type: &str) -> Result<RoundupOutput, walkdir::Error> {
     let extension = String::from(".") + file_type;
-
     let mut total_line_count: u64 = 0;
+    let mut file_count: u32 = 0;
+
     for entry in WalkDir::new(path) {
         let entry = entry?;
 
@@ -51,9 +53,13 @@ fn walkdir(path: &str, file_type: &str) -> Result<u64, walkdir::Error> {
                 Err(e) => panic!("Failed to count lines: {}", e),
             };
             total_line_count += a as u64;
+            file_count += 1;
         }
     }
-    Ok(total_line_count)
+    Ok(RoundupOutput {
+        lines: total_line_count,
+        files: file_count,
+    })
 }
 
 fn count_lines(path: &str) -> Result<usize, std::io::Error> {

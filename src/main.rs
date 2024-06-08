@@ -28,7 +28,15 @@ fn main() {
 
     let filetypes: Vec<String> = parse_filetypes(args.filetype);
 
-    println!("Searching {} for {:?} files", args.dir, &filetypes);
+    println!(
+        "Searching {} for {:?} filetypes",
+        args.dir,
+        if filetypes.is_empty() {
+            vec!["all".to_string()]
+        } else {
+            filetypes.clone()
+        },
+    );
 
     match walkdir(&args.dir, filetypes) {
         Ok(output) => println!(
@@ -37,7 +45,7 @@ fn main() {
             output.files,
             if output.files > 1 { "files" } else { "file" },
         ),
-        Err(e) => println!("Directory walk failed: {}", e),
+        Err(e) => eprintln!("Directory walk failed: {}", e),
     }
 }
 
@@ -71,10 +79,13 @@ fn walkdir(path: &str, desired_file_types: Vec<String>) -> Result<RoundupOutput,
 
         let file_summary = FileSummary::from(dir_entry.path().display().to_string());
 
-        let is_desired_type = match file_summary.extension {
-            Some(ref ext) => desired_file_types.contains(&format!(".{}", &ext)),
-            None => desired_file_types.is_empty(),
-        };
+        let mut is_desired_type = true;
+        if !desired_file_types.is_empty() {
+            is_desired_type = match file_summary.extension {
+                Some(ref ext) => desired_file_types.contains(&format!(".{}", &ext)),
+                None => desired_file_types.is_empty(),
+            };
+        }
 
         if is_desired_type {
             total_line_count += file_summary.read_num_lines()?;

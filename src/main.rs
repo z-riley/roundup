@@ -2,6 +2,7 @@ mod files;
 
 use crate::files::FileSummary;
 use clap::{command, Parser};
+use std::error::Error;
 use walkdir::WalkDir;
 
 #[derive(Parser, Debug)]
@@ -30,7 +31,12 @@ fn main() {
     println!("Searching {} for {:?} files", args.dir, &filetypes);
 
     match walkdir(&args.dir, filetypes) {
-        Ok(output) => println!("{} lines in {} files", output.lines, output.files),
+        Ok(output) => println!(
+            "{} lines in {} {}",
+            output.lines,
+            output.files,
+            if output.files > 1 { "files" } else { "file" },
+        ),
         Err(e) => println!("Directory walk failed: {}", e),
     }
 }
@@ -51,7 +57,7 @@ fn parse_filetypes(filetype_arg: Option<String>) -> Vec<String> {
     }
 }
 
-fn walkdir(path: &str, desired_file_types: Vec<String>) -> Result<RoundupOutput, walkdir::Error> {
+fn walkdir(path: &str, desired_file_types: Vec<String>) -> Result<RoundupOutput, Box<dyn Error>> {
     let mut total_line_count: u64 = 0;
     let mut file_count: u32 = 0;
 
@@ -71,7 +77,7 @@ fn walkdir(path: &str, desired_file_types: Vec<String>) -> Result<RoundupOutput,
         };
 
         if is_desired_type {
-            total_line_count += file_summary.read_num_lines().unwrap();
+            total_line_count += file_summary.read_num_lines()?;
             file_count += 1;
         }
     }

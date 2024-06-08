@@ -1,6 +1,7 @@
+mod files;
+
+use crate::files::FileSummary;
 use clap::{command, Parser};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use walkdir::WalkDir;
 
 #[derive(Parser, Debug)]
@@ -23,36 +24,54 @@ CLI-based lines-of-code analyser. E.g.,
 */
 fn main() {
     let args = Args::parse();
-    let filetype = args.filetype.unwrap_or("all".to_string());
 
-    println!("Searching {} for .{} files", args.dir, &filetype);
+    let filetypes: Vec<String> = parse_filetypes(args.filetype);
 
-    match walkdir(&args.dir, &filetype) {
+    println!("Searching {} for {:?} files", args.dir, &filetypes);
+
+    match walkdir(&args.dir, filetypes) {
         Ok(output) => println!("{} lines in {} files", output.lines, output.files),
         Err(e) => println!("Directory walk failed: {}", e),
     }
 }
 
-fn walkdir(path: &str, file_type: &str) -> Result<RoundupOutput, walkdir::Error> {
-    let extension = String::from(".") + file_type;
+fn parse_filetypes(filetype_arg: Option<String>) -> Vec<String> {
+    match filetype_arg {
+        Some(filetype_arg) => {
+            if filetype_arg.contains(",") {
+                filetype_arg
+                    .split(",")
+                    .map(|s| ".".to_string() + s)
+                    .collect()
+            } else {
+                vec![".".to_string() + &filetype_arg]
+            }
+        }
+        None => Vec::<String>::new(),
+    }
+}
+
+fn walkdir(path: &str, desired_file_types: Vec<String>) -> Result<RoundupOutput, walkdir::Error> {
     let mut total_line_count: u64 = 0;
     let mut file_count: u32 = 0;
 
     for entry in WalkDir::new(path) {
-        let entry = entry?;
+        let dir_entry = entry?;
 
-        let is_file_type = entry
-            .file_name()
-            .to_str()
-            .map(|s| s.ends_with(&extension))
-            .unwrap_or(false);
+        // Don't read directories
+        if dir_entry.file_type().is_dir() {
+            continue;
+        }
 
-        if is_file_type {
-            let a = match count_lines(&entry.path().display().to_string()) {
-                Ok(line_count) => line_count,
-                Err(e) => panic!("Failed to count lines: {}", e),
-            };
-            total_line_count += a as u64;
+        let file_summary = FileSummary::from(dir_entry.path().display().to_string());
+
+        let is_desired_type = match file_summary.extension {
+            Some(ref ext) => desired_file_types.contains(&format!(".{}", &ext)),
+            None => desired_file_types.is_empty(),
+        };
+
+        if is_desired_type {
+            total_line_count += file_summary.read_num_lines().unwrap();
             file_count += 1;
         }
     }
@@ -60,9 +79,4 @@ fn walkdir(path: &str, file_type: &str) -> Result<RoundupOutput, walkdir::Error>
         lines: total_line_count,
         files: file_count,
     })
-}
-
-fn count_lines(path: &str) -> Result<usize, std::io::Error> {
-    let reader = BufReader::new(File::open(path)?);
-    Ok(reader.lines().count() + 0)
 }

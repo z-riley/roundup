@@ -38,7 +38,7 @@ fn main() {
         },
     );
 
-    match walkdir(&args.dir, filetypes) {
+    match roundup(&args.dir, filetypes) {
         Ok(output) => println!(
             "{} lines in {} {}",
             output.lines,
@@ -65,7 +65,7 @@ fn parse_filetypes(filetype_arg: Option<String>) -> Vec<String> {
     }
 }
 
-fn walkdir(path: &str, desired_file_types: Vec<String>) -> Result<RoundupOutput, Box<dyn Error>> {
+fn roundup(path: &str, desired_file_types: Vec<String>) -> Result<RoundupOutput, Box<dyn Error>> {
     let mut total_line_count: u64 = 0;
     let mut file_count: u32 = 0;
 

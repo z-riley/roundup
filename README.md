@@ -22,3 +22,8 @@ For files with the `.rs`, `.toml`, and `.md` extensions:
 roundup /path/to/my/project/ rs,toml,md
 ```
 
+## Installation
+
+```shell
+cargo install --git https://github.com/z-riley/roundup
+```

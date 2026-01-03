@@ -72,8 +72,7 @@ fn roundup(path: &str, desired_file_types: Vec<String>) -> Result<RoundupOutput,
     for entry in WalkDir::new(path) {
         let dir_entry = entry?;
 
-        // Don't read directories
-        if dir_entry.file_type().is_dir() {
+        if !dir_entry.file_type().is_file() {
             continue;
         }
 
